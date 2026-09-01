@@ -34,15 +34,14 @@ class CustomStatusRole(Cog):
     @commands.Cog.listener()
     async def on_presence_update(
         self,
-        member: discord.Member,
-        before: discord.Presence,
+        before: discord.Member | discord.Presence,
         after: discord.Member | discord.Presence,
     ):
         if not self.target_status or not self.role_ids:
             return
 
         guild = getattr(after, "guild", None)
-        user_id = getattr(after, "user_id", None)
+        user_id = getattr(after, "id", None) or getattr(after, "user_id", None)
         if guild is None or user_id is None:
             return
 
