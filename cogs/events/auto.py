@@ -16,14 +16,14 @@ class Autorole(Cog):
         async for entry in guild.audit_logs(limit=3):
             if entry.action == discord.AuditLogAction.bot_add:
                 embed = discord.Embed(
-                   description=f"🧩 **Thanks for adding me.**\n\n➡️ My default prefix is `>`\n➡️> Use the `>help` command to see a list of commands\n➡️ For detailed guides, FAQ and information, visit our **[Support Server](https://discord.gg/codexdev)**",
+                   description=f"🧩 **Thanks for adding me.**\n\n➡️ My default prefix is `>`\n➡️> Use the `>help` command to see a list of commands\n➡️ For detailed guides, FAQ and information, visit our **[Support Server](https://discord.gg/TW9dTu7YKS)**",
                     color=0xFF0000
                )
                 embed.set_thumbnail(url=entry.user.display_avatar.url if entry.user.avatar else entry.user.default_avatar.url)
                 embed.set_author(name=f"{guild.name}", icon_url=guild.me.display_avatar.url)
                
                 website_button = Button(label='Website', style=discord.ButtonStyle.link, url='https://.vercel.app')
-                support_button = Button(label='Support', style=discord.ButtonStyle.link, url='https://discord.gg/codexdev')
+                support_button = Button(label='Support', style=discord.ButtonStyle.link, url='https://discord.gg/TW9dTu7YKS')
                 vote_button = Button(label='Vote for Me', style=discord.ButtonStyle.link, url=f'https://top.gg/bot/{self.bot.user.id}/vote')
                 view = View()
                 view.add_item(support_button)

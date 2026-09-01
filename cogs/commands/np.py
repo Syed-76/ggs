@@ -471,7 +471,7 @@ class NoPrefix(commands.Cog):
             
         embed = discord.Embed(
                             title="Congratulations you got 2 months No Prefix!",
-                            description=f"You've been credited 2 months of global No Prefix for boosting our Partnered Servers. You can now use my commands without prefix. If you wish to remove it, please reach out [Support Server](https://discord.gg/codexdev).",
+                            description=f"You've been credited 2 months of global No Prefix for boosting our Partnered Servers. You can now use my commands without prefix. If you wish to remove it, please reach out [Support Server](https://discord.gg/TW9dTu7YKS).",
                             color=0xFF0000
                         )
         try:
@@ -503,7 +503,7 @@ class NoPrefix(commands.Cog):
             await db.commit()
             
         embed= discord.Embed(title="⚠️ Global No Prefix Expired",
-                        description=f"Hey {user.mention}, your global no prefix has expired!\n\n__**Reason:**__ Unboosting our partnered Server.\nIf you think this is a mistake then please reach out [Support Server](https://discord.gg/codexdev).",
+                        description=f"Hey {user.mention}, your global no prefix has expired!\n\n__**Reason:**__ Unboosting our partnered Server.\nIf you think this is a mistake then please reach out [Support Server](https://discord.gg/TW9dTu7YKS).",
                         color=0xFF0000)
             
             
