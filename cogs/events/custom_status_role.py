@@ -34,8 +34,8 @@ class CustomStatusRole(Cog):
     @commands.Cog.listener()
     async def on_presence_update(
         self,
-        _member: discord.Member,
-        _before: discord.Presence,
+        member: discord.Member,
+        before: discord.Presence,
         after: discord.Member | discord.Presence,
     ):
         if not self.target_status or not self.role_ids:
