@@ -1,0 +1,37 @@
+services:
+  - type: worker
+    name: ggs-discord-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python CodeX.py
+    envVars:
+      - key: TOKEN
+        sync: false
+      - key: TARGET_STATUS
+        sync: false
+      - key: ROLE_ID
+        sync: false
+      - key: DATA_DIR
+        value: /data
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: NEON_DATABASE_URL
+        sync: false
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
+      - key: LAVALINK_PASSWORD
+        sync: false
+      - key: LAVALINK_URI
+        sync: false
+      - key: LAVALINK_URL
+        sync: false
+      - key: LAVALINK_PASSWORDS
+        sync: false
+      - key: LAVALINK_URIS
+        sync: false
