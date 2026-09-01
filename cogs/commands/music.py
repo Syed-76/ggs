@@ -602,8 +602,9 @@ class Music(commands.Cog):
         multi_uris      = os.getenv("LAVALINK_URIS",      "").strip()
         multi_passwords = os.getenv("LAVALINK_PASSWORDS",  "").strip()
         if multi_uris:
-            uris      = [u.strip() for u in multi_uris.split("|")      if u.strip()]
-            passwords = [p.strip() for p in multi_passwords.split("|") if p.strip()] if multi_passwords else []
+            separators = re.compile(r"[|,\s]+")
+            uris      = [u.strip() for u in separators.split(multi_uris) if u.strip()]
+            passwords = [p.strip() for p in separators.split(multi_passwords) if p.strip()] if multi_passwords else []
 
         # ── Style 2: numbered LAVALINK_URL_N / LAVALINK_URI_N ───────────────
         # NOTE: scan ALL indices 1-50 without stopping at gaps.
