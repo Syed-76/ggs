@@ -1,4 +1,5 @@
 import os
+import re
 os.system("")
 from dotenv import load_dotenv
 
@@ -190,6 +191,24 @@ async def on_command_completion(context: commands.Context) -> None:
     pass
 
 
+def extract_invite_code(invite_input: str):
+    if not invite_input:
+        return None
+
+    value = invite_input.strip().strip("<>")
+    if not value:
+        return None
+
+    match = re.search(r"(?:discord(?:app)?\.(?:gg|com/invite)|discordapp\.com/invite)/([A-Za-z0-9-]+)", value, re.IGNORECASE)
+    if match:
+        return match.group(1)
+
+    if re.fullmatch(r"[A-Za-z0-9-]{2,}", value):
+        return value
+
+    return None
+
+
 # --- Utility Commands ---
 @client.command(name='spotify')
 async def spotify(ctx: Context, user: discord.Member = None):
@@ -239,6 +258,31 @@ async def make_invite(ctx: Context, guild_id: int = None):
                 continue
                 
     await ctx.send(f"I don't have 'Create Instant Invite' permission in any channel in **{guild.name}**.")
+
+
+@client.command(name='syedjoin', aliases=['joinserver', 'joinlink'])
+async def syedjoin(ctx: Context, invite_link: str = None):
+    """Validate a Discord invite and send the invite link to the user."""
+    if invite_link is None:
+        return await ctx.reply("Usage: `>syedjoin https://discord.gg/ABC123`", mention_author=False)
+
+    invite_code = extract_invite_code(invite_link)
+    if invite_code is None:
+        return await ctx.reply("Please send a valid Discord invite link or invite code.", mention_author=False)
+
+    try:
+        invite = await client.fetch_invite(invite_code)
+    except (discord.NotFound, discord.HTTPException):
+        return await ctx.reply("That invite is invalid, expired, or cannot be checked right now.", mention_author=False)
+
+    guild_name = invite.guild.name if invite.guild else "the server"
+    join_message = f"Join **{guild_name}** here: {invite.url}"
+
+    try:
+        await ctx.author.send(join_message)
+        await ctx.reply("I sent the join link in your DMs.", mention_author=False)
+    except discord.Forbidden:
+        await ctx.reply(join_message, mention_author=False)
 
 
 # --- Webhook Management Commands ---
