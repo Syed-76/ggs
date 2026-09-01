@@ -1,11 +1,14 @@
 import discord
 import re
 import inspect
+import logging
 from discord.ext import commands as _commands
 from discord.ext.commands import CheckFailure, CommandError
 from utils.Tools import *
 from utils.branding import DEFAULT_COLOR, DEFAULT_BRANDING
 from utils.emojis import e as _e
+
+logger = logging.getLogger(__name__)
 
 
 def _is_noop_bare_group(cmd_obj) -> bool:
@@ -574,9 +577,9 @@ class View(discord.ui.View):
             emoji_display = emoji_str
 
             options.append(discord.SelectOption(
-                label=label,
+                label=str(label)[:100],
                 emoji=emoji_display or None,
-                description=description,
+                description=str(description or "No commands")[:100],
             ))
 
             # ── Category embed ─────────────────────────────────────────────────

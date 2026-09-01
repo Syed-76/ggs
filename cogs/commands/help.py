@@ -12,10 +12,13 @@ import json
 from utils import help as vhelp
 from utils import Paginator, DescriptionEmbedPaginator, FieldPagePaginator, TextPaginator
 import asyncio
+import logging
 from utils.config import serverLink
 from utils.Tools import *
 from utils.branding import get_branding, DEFAULT_COLOR, DEFAULT_BRANDING
 from utils.emojis import e as _e
+
+logger = logging.getLogger(__name__)
 
 color = DEFAULT_COLOR
 client = zyrox()
@@ -320,7 +323,7 @@ class Help(Cog, name="help"):
           ephemeral=True,
         )
     except Exception as e:
-      print(f"slash_help failed: {e}")
+      logger.exception("slash_help failed")
       with suppress(discord.HTTPException):
         from utils.emojis import e as _e
         await interaction.followup.send(
