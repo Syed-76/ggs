@@ -28,44 +28,42 @@ def _help_text(author_name: str, prefix: str = ">", total_commands: int = 589) -
   """Build the plain-text home page used by both prefix and slash help."""
   emoji = lambda name: _e(name) or f":{name}:"
   return (
-    f"**Cos** ~| `APP`\n\n"
-    f"alifop24_\n"
-    f"{emoji('ArrowRed')} **Start Cos Today**\n"
-    f"{emoji('zArrow')} Type `{prefix}antinuke enable`\n"
-    f"{emoji('zArrow')} Server Prefix: `{prefix}`\n"
-    f"{emoji('zArrow')} Total Commands: `{total_commands}`\n\n"
-    f"{emoji('zCloud')} **Main Features**\n"
+    f"**Cos Help Center** | `APP`\n\n"
+    f"{emoji('ArrowRed')} **Get started**\n"
+    f"{emoji('zArrow')} Try `{prefix}antinuke enable` to enable server protection.\n"
+    f"{emoji('zArrow')} Prefix: `{prefix}`  •  Commands: `{total_commands}`\n\n"
+    f"{emoji('zCloud')} **Core features**\n"
     f"{emoji('zSafe')} » Security\n"
     f"{emoji('zbot')} » Automoderation\n"
     f"{emoji('zwrench')} » Utility\n"
-    f"{emoji('zwifi')} » Autoreact & responder\n"
+    f"{emoji('zwifi')} » Autoreact & Responder\n"
     f"{emoji('zsowrd')} » Moderation\n"
-    f"{emoji('zpeople')} » Autorole & Invc\n"
+    f"{emoji('zpeople')} » Autoroles & Invite-to-Voice\n"
     f"{emoji('zrocket')} » Fun\n"
     f"{emoji('games')} » Games\n"
-    f"{emoji('zban')} » Ignore Channels\n"
-    f"{emoji('zwifi')} » Server\n"
+    f"{emoji('zban')} » Ignored Channels\n"
+    f"{emoji('zwifi')} » Server Management\n"
     f"{emoji('zunmute')} » Voice\n"
     f"{emoji('zseed')} » Welcomer\n"
-    f"{emoji('ztada')} » Giveaway\n"
-    f"{emoji('zticket')} » Ticket\n"
-    f"{emoji('zpeople')} » Invite Tracker\n"
+    f"{emoji('ztada')} » Giveaways\n"
+    f"{emoji('zticket')} » Tickets\n"
+    f"{emoji('zpeople')} » Invite Tracking\n"
     f"{emoji('zwrench')} » Bot Customization {emoji('starr')}\n\n"
-    f"{emoji('zmodule')} **Extra Features**\n"
-    f"{emoji('zcast')} » Advance Logging\n"
-    f"{emoji('starr')} » Vanityroles\n"
+    f"{emoji('zmodule')} **Additional features**\n"
+    f"{emoji('zcast')} » Advanced Logging\n"
+    f"{emoji('starr')} » Vanity Roles\n"
     f"{emoji('zcounting')} » Counting\n"
     f"{emoji('zyrox_system')} » J2C\n"
-    f"{emoji('boost')} » Boost\n"
+    f"{emoji('boost')} » Boosting\n"
     f"{emoji('zlevelup')} » Leveling\n"
-    f"{emoji('zpin')} » Sticky\n"
+    f"{emoji('zpin')} » Sticky Messages\n"
     f"{emoji('zyroxthunder')} » Verification\n"
     f"{emoji('lock')} » Encryption\n"
     f"{emoji('zmc')} » Minecraft\n"
-    f"{emoji('zmsg')} » Joindm\n"
-    f"{emoji('zcircle')} » Birthday\n"
-    f"{emoji('zcircle2')} » Customrole\n\n"
-    f"• Help page 1/29 | Requested by: {author_name}"
+    f"{emoji('zmsg')} » Join DMs\n"
+    f"{emoji('zcircle')} » Birthdays\n"
+    f"{emoji('zcircle2')} » Custom Roles\n\n"
+    f"*Page 1 of 29  •  Requested by {author_name}*"
   )
 
 
@@ -85,17 +83,19 @@ class HelpFeatureView(discord.ui.View):
   @discord.ui.button(label="Main Commands", style=discord.ButtonStyle.primary, custom_id="help_main")
   async def main_commands(self, interaction: discord.Interaction, button: discord.ui.Button):
     await interaction.response.send_message(
-      "**Main Features**\nSecurity\nAutomoderation\nUtility\nAutoreact & responder\n"
-      "Moderation\nAutorole & Invc\nFun\nGames\nIgnore Channels\nServer\nVoice\n"
-      "Welcomer\nGiveaway\nTicket\nInvite Tracker\nBot Customization",
+      "**Core features**\nSecurity\nAutomoderation\nUtility\nAutoreact & Responder\n"
+      "Moderation\nAutoroles & Invite-to-Voice\nFun\nGames\nIgnored Channels\n"
+      "Server Management\nVoice\nWelcomer\nGiveaways\nTickets\nInvite Tracking\n"
+      "Bot Customization",
       ephemeral=True,
     )
 
   @discord.ui.button(label="Extra Commands", style=discord.ButtonStyle.secondary, custom_id="help_extra")
   async def extra_commands(self, interaction: discord.Interaction, button: discord.ui.Button):
     await interaction.response.send_message(
-      "**Extra Features**\nAdvance Logging\nVanityroles\nCounting\nJ2C\nBoost\n"
-      "Leveling\nSticky\nVerification\nEncryption\nMinecraft\nJoindm\nBirthday\nCustomrole",
+      "**Additional features**\nAdvanced Logging\nVanity Roles\nCounting\nJ2C\nBoosting\n"
+      "Leveling\nSticky Messages\nVerification\nEncryption\nMinecraft\nJoin DMs\n"
+      "Birthdays\nCustom Roles",
       ephemeral=True,
     )
 
