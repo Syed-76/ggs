@@ -24,53 +24,128 @@ color = DEFAULT_COLOR
 client = zyrox()
 
 
-def _help_text(author_name: str, prefix: str = ">", total_commands: int = 589) -> str:
-  """Build the plain-text home page used by both prefix and slash help."""
+def _help_embed(ctx, prefix: str = ">", total_commands: int = 589) -> discord.Embed:
+  """Build the visual home page shared by prefix and slash help."""
   emoji = lambda name: _e(name) or f":{name}:"
-  return (
-    f"**Cos Help Center** | `APP`\n\n"
-    f"{emoji('ArrowRed')} **Get started**\n"
-    f"{emoji('zArrow')} Try `{prefix}antinuke enable` to enable server protection.\n"
-    f"{emoji('zArrow')} Prefix: `{prefix}`  •  Commands: `{total_commands}`\n\n"
-    f"{emoji('zCloud')} **Core features**\n"
-    f"{emoji('zSafe')} » Security\n"
-    f"{emoji('zbot')} » Automoderation\n"
-    f"{emoji('zwrench')} » Utility\n"
-    f"{emoji('zwifi')} » Autoreact & Responder\n"
-    f"{emoji('zsowrd')} » Moderation\n"
-    f"{emoji('zpeople')} » Autoroles & Invite-to-Voice\n"
-    f"{emoji('zrocket')} » Fun\n"
-    f"{emoji('games')} » Games\n"
-    f"{emoji('zban')} » Ignored Channels\n"
-    f"{emoji('zwifi')} » Server Management\n"
-    f"{emoji('zunmute')} » Voice\n"
-    f"{emoji('zseed')} » Welcomer\n"
-    f"{emoji('ztada')} » Giveaways\n"
-    f"{emoji('zticket')} » Tickets\n"
-    f"{emoji('zpeople')} » Invite Tracking\n"
-    f"{emoji('zwrench')} » Bot Customization {emoji('starr')}\n\n"
-    f"{emoji('zmodule')} **Additional features**\n"
-    f"{emoji('zcast')} » Advanced Logging\n"
-    f"{emoji('starr')} » Vanity Roles\n"
-    f"{emoji('zcounting')} » Counting\n"
-    f"{emoji('zyrox_system')} » J2C\n"
-    f"{emoji('boost')} » Boosting\n"
-    f"{emoji('zlevelup')} » Leveling\n"
-    f"{emoji('zpin')} » Sticky Messages\n"
-    f"{emoji('zyroxthunder')} » Verification\n"
-    f"{emoji('lock')} » Encryption\n"
-    f"{emoji('zmc')} » Minecraft\n"
-    f"{emoji('zmsg')} » Join DMs\n"
-    f"{emoji('zcircle')} » Birthdays\n"
-    f"{emoji('zcircle2')} » Custom Roles\n\n"
-    f"*Page 1 of 29  •  Requested by {author_name}*"
+  embed = discord.Embed(
+    color=0x4A2E80,
+    description=(
+      f"{emoji('ArrowRed')} **Get started**\n"
+      f"{emoji('zArrow')} Try `{prefix}antinuke enable` to enable server protection.\n"
+      f"{emoji('zArrow')} Prefix: `{prefix}` • Commands: `{total_commands}`"
+    ),
   )
+  embed.set_author(
+    name="alifop24_",
+    icon_url=ctx.bot.user.display_avatar.url,
+  )
+  embed.add_field(
+    name="☁️ Main Features",
+    value="\n".join([
+      f"{emoji('zSafe')} » Security",
+      f"{emoji('zbot')} » Automoderation",
+      f"{emoji('zwrench')} » Utility",
+      f"{emoji('zwifi')} » Autoreact & Responder",
+      f"{emoji('zsowrd')} » Moderation",
+      f"{emoji('zpeople')} » Autoroles & Invite-to-Voice",
+      f"{emoji('zrocket')} » Fun",
+      f"{emoji('games')} » Games",
+      f"{emoji('zban')} » Ignored Channels",
+      f"{emoji('zwifi')} » Server Management",
+      f"{emoji('zunmute')} » Voice",
+      f"{emoji('zseed')} » Welcomer",
+      f"{emoji('ztada')} » Giveaways",
+      f"{emoji('zticket')} » Tickets",
+      f"{emoji('zpeople')} » Invite Tracking",
+      f"{emoji('zwrench')} » Bot Customization {emoji('starr')}",
+    ]),
+    inline=True,
+  )
+  embed.add_field(
+    name="🔮 Extra Features",
+    value="\n".join([
+      f"{emoji('zcast')} » Advanced Logging",
+      f"{emoji('starr')} » Vanity Roles",
+      f"{emoji('zcounting')} » Counting",
+      f"{emoji('zyrox_system')} » J2C",
+      f"{emoji('boost')} » Boosting",
+      f"{emoji('zlevelup')} » Leveling",
+      f"{emoji('zpin')} » Sticky Messages",
+      f"{emoji('zyroxthunder')} » Verification",
+      "🔒 » Encryption",
+      f"{emoji('zmc')} » Minecraft",
+      f"{emoji('zmsg')} » Join DMs",
+      f"{emoji('zcircle')} » Birthdays",
+      f"{emoji('zcircle2')} » Custom Roles",
+    ]),
+    inline=True,
+  )
+  embed.set_footer(
+    text=f"• Help page 1/29 | Requested by: {ctx.author}"
+  )
+  return embed
+
+
+def _category_pages(ctx, mapping):
+  pages = []
+  for cog, commands_in_cog in mapping.items():
+    if not hasattr(cog, "help_custom"):
+      continue
+    try:
+      emoji, label, description = cog.help_custom()
+    except Exception:
+      continue
+    lines = []
+    for command in commands_in_cog:
+      if command.hidden:
+        continue
+      lines.append(f"`{ctx.prefix}{command.qualified_name}` — {command.short_doc or 'No description'}")
+    if lines:
+      pages.append((str(emoji or ""), str(label), str(description or "No commands"), lines))
+  return pages[:25]
 
 
 class HelpFeatureView(discord.ui.View):
-  def __init__(self, ctx):
+  def __init__(self, ctx, mapping):
     super().__init__(timeout=300)
     self.ctx = ctx
+    self.pages = _category_pages(ctx, mapping)
+
+    options = [
+      discord.SelectOption(
+        label=label[:100],
+        value=str(index),
+        description=description[:100],
+        emoji=emoji or None,
+      )
+      for index, (emoji, label, description, _) in enumerate(self.pages)
+    ]
+    if not options:
+      options = [discord.SelectOption(label="No categories available", value="none")]
+
+    self.category_select = discord.ui.Select(
+      placeholder="Select a category to see commands",
+      custom_id="help_category",
+      options=options,
+      disabled=not self.pages,
+      row=0,
+    )
+    self.category_select.callback = self.category_callback
+    self.add_item(self.category_select)
+
+    self.main_button = discord.ui.Button(
+      label="Main Commands", style=discord.ButtonStyle.secondary,
+      custom_id="help_main", row=1,
+    )
+    self.main_button.callback = self.main_commands
+    self.add_item(self.main_button)
+
+    self.extra_button = discord.ui.Button(
+      label="Extra Commands", style=discord.ButtonStyle.secondary,
+      custom_id="help_extra", row=1,
+    )
+    self.extra_button.callback = self.extra_commands
+    self.add_item(self.extra_button)
 
   async def interaction_check(self, interaction: discord.Interaction) -> bool:
     if interaction.user.id != self.ctx.author.id:
@@ -80,18 +155,26 @@ class HelpFeatureView(discord.ui.View):
       return False
     return True
 
-  @discord.ui.button(label="Main Commands", style=discord.ButtonStyle.primary, custom_id="help_main")
-  async def main_commands(self, interaction: discord.Interaction, button: discord.ui.Button):
+  async def category_callback(self, interaction: discord.Interaction):
+    emoji, label, description, lines = self.pages[int(self.category_select.values[0])]
+    embed = discord.Embed(
+      title=f"{emoji} {label}".strip(),
+      description=description,
+      color=0x4A2E80,
+    )
+    embed.add_field(name="Commands", value="\n".join(lines[:25]), inline=False)
+    embed.set_footer(text=f"Requested by: {self.ctx.author}")
+    await interaction.response.edit_message(embed=embed, view=self)
+
+  async def main_commands(self, interaction: discord.Interaction):
     await interaction.response.send_message(
-      "**Core features**\nSecurity\nAutomoderation\nUtility\nAutoreact & Responder\n"
+      "**Main Commands**\n\nSecurity\nAutomoderation\nUtility\nAutoreact & Responder\n"
       "Moderation\nAutoroles & Invite-to-Voice\nFun\nGames\nIgnored Channels\n"
-      "Server Management\nVoice\nWelcomer\nGiveaways\nTickets\nInvite Tracking\n"
-      "Bot Customization",
+      "Server Management\nVoice\nWelcomer\nGiveaways\nTickets\nInvite Tracking\nBot Customization",
       ephemeral=True,
     )
 
-  @discord.ui.button(label="Extra Commands", style=discord.ButtonStyle.secondary, custom_id="help_extra")
-  async def extra_commands(self, interaction: discord.Interaction, button: discord.ui.Button):
+  async def extra_commands(self, interaction: discord.Interaction):
     await interaction.response.send_message(
       "**Additional features**\nAdvanced Logging\nVanity Roles\nCounting\nJ2C\nBoosting\n"
       "Leveling\nSticky Messages\nVerification\nEncryption\nMinecraft\nJoin DMs\n"
@@ -168,8 +251,8 @@ class HelpCommand(commands.HelpCommand):
       return
     prefix = (await getConfig(ctx.guild.id)).get("prefix", ">")
     await ctx.reply(
-      _help_text(ctx.author.name, prefix=prefix),
-      view=HelpFeatureView(ctx),
+      embed=_help_embed(ctx, prefix=prefix),
+      view=HelpFeatureView(ctx, mapping),
       mention_author=False,
     )
 
@@ -330,7 +413,11 @@ class Help(Cog, name="help"):
   async def _build_and_send_help(self, interaction: Interaction):
     prefix = (await getConfig(interaction.guild.id)).get("prefix", ">")
     ctx = _SlashCtx(interaction, prefix=prefix)
+    mapping = {
+      cog: cog.get_commands()
+      for cog in ctx.bot.cogs.values()
+    }
     await interaction.followup.send(
-      _help_text(interaction.user.name, prefix=prefix),
-      view=HelpFeatureView(ctx),
+      embed=_help_embed(ctx, prefix=prefix),
+      view=HelpFeatureView(ctx, mapping),
     )
