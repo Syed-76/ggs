@@ -405,5 +405,15 @@ class Help(Cog, name="help"):
 
     embed.set_footer(text=f"Requested By {interaction.user} | {b_name}")
 
-    view = vhelp.View(mapping=mapping, ctx=ctx, homeembed=embed, ui=2, branding=branding)
-    await interaction.followup.send(embed=embed, view=view)
+    try:
+      view = vhelp.View(mapping=mapping, ctx=ctx, homeembed=embed, ui=2, branding=branding)
+    except Exception:
+      logger.exception("Unable to build slash help view")
+      await interaction.followup.send(embed=embed)
+      return
+
+    try:
+      await interaction.followup.send(embed=embed, view=view)
+    except discord.HTTPException:
+      logger.exception("Unable to send slash help view; retrying without components")
+      await interaction.followup.send(embed=embed)
