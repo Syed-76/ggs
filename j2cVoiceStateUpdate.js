@@ -25,7 +25,7 @@ module.exports = function registerJ2C(client, options = {}) {
   }
 
   client.on("voiceStateUpdate", async (oldState, newState) => {
-    const member = newState.member || oldState.member;
+    const member = newState.member || await newState.guild?.members.fetch(newState.id).catch(() => null);
     const guild = newState.guild || oldState.guild;
 
     if (!member || !guild || member.user.bot) return;
@@ -37,11 +37,10 @@ module.exports = function registerJ2C(client, options = {}) {
       let temporaryChannel;
 
       try {
-        const triggerChannel = newState.channel;
-        const parentId = configuredCategoryId || triggerChannel?.parentId;
-
+        const parentId = configuredCategoryId || newState.channel?.parentId;
+        const channelName = member.displayName || member.user.username;
         temporaryChannel = await guild.channels.create({
-          name: `🔊 ${newState.member.displayName}'s Lounge`,
+          name: `🔊 ${channelName}'s Lounge`.slice(0, 100),
           type: ChannelType.GuildVoice,
           parent: parentId || undefined,
           reason: `J2C channel created for ${member.user.tag}`,
