@@ -46,8 +46,10 @@ class zyrox(commands.AutoShardedBot):
     # Default bot customization (used to seed fresh installs; admins can still
     # override any of these later via /global_customization, and their choice
     # will be preserved across restarts).
-    DEFAULT_EMBED_THUMBNAIL = "https://cdn.discordapp.com/attachments/1475147783437811901/1522602829947343119/file_0000000023a87207a3bdcfadd18c59bc.png"
-    DEFAULT_EMBED_BANNER = "https://cdn.discordapp.com/attachments/1475147783437811901/1522486762318860298/yellow-header-gif-yellow-header.gif"
+    DEFAULT_EMBED_THUMBNAIL = "https://cdn.discordapp.com/attachments/1543370420160569455/1545793702658842724/image.jfif?ex=6a9d7012&is=6a9c1e92&hm=11af6ce8c6b8ebdd8a98d876f5ae0aa249d909e362c2ada37ce5eb6d452a6c4d&"
+    DEFAULT_EMBED_BANNER = "https://cdn.discordapp.com/attachments/1543370420160569455/1545793663542755429/Discord_-_Group_Chat_Thats_All_Fun__Games.gif?ex=6a9d7008&is=6a9c1e88&hm=1969a34b8868e896626bc451c981debda832a7162de7426b92beb43440a8b357&"
+    LEGACY_EMBED_THUMBNAIL = "https://cdn.discordapp.com/attachments/1475147783437811901/1522602829947343119/file_0000000023a87207a3bdcfadd18c59bc.png"
+    LEGACY_EMBED_BANNER = "https://cdn.discordapp.com/attachments/1475147783437811901/1522486762318860298/yellow-header-gif-yellow-header.gif"
     DEFAULT_ACTIVITY_TYPE = "watching"
     DEFAULT_ACTIVITY_NAME = "/help | .gg/thesunlight"
 
@@ -62,9 +64,9 @@ class zyrox(commands.AutoShardedBot):
 
         global_branding = await get_global_branding()
         updates = {}
-        if not global_branding.get("embed_thumbnail"):
+        if global_branding.get("embed_thumbnail") in (None, self.LEGACY_EMBED_THUMBNAIL):
             updates["embed_thumbnail"] = self.DEFAULT_EMBED_THUMBNAIL
-        if not global_branding.get("embed_banner"):
+        if global_branding.get("embed_banner") in (None, self.LEGACY_EMBED_BANNER):
             updates["embed_banner"] = self.DEFAULT_EMBED_BANNER
         if updates:
             await set_global_branding(**updates)
