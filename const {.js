@@ -3,6 +3,7 @@ const {
   GatewayIntentBits,
   ActivityType,
 } = require("discord.js");
+const registerJ2C = require("./j2cVoiceStateUpdate");
 
 // Replace these values with your own configuration.
 const TARGET_STATUS = "your target status";
@@ -14,8 +15,16 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildVoiceStates,
   ],
 });
+
+if (process.env.JOIN_TO_CREATE_CHANNEL_ID) {
+  registerJ2C(client, {
+    joinToCreateChannelId: process.env.JOIN_TO_CREATE_CHANNEL_ID,
+    categoryId: process.env.J2C_CATEGORY_ID,
+  });
+}
 
 client.once("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
