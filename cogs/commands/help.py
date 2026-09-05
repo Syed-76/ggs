@@ -23,6 +23,83 @@ logger = logging.getLogger(__name__)
 color = DEFAULT_COLOR
 client = zyrox()
 
+
+def _help_text(author_name: str, prefix: str = ">", total_commands: int = 589) -> str:
+  """Build the plain-text home page used by both prefix and slash help."""
+  emoji = lambda name: _e(name) or f":{name}:"
+  return (
+    f"**Cos** ~| `APP`\n\n"
+    f"alifop24_\n"
+    f"{emoji('ArrowRed')} **Start Cos Today**\n"
+    f"{emoji('zArrow')} Type `{prefix}antinuke enable`\n"
+    f"{emoji('zArrow')} Server Prefix: `{prefix}`\n"
+    f"{emoji('zArrow')} Total Commands: `{total_commands}`\n\n"
+    f"{emoji('zCloud')} **Main Features**\n"
+    f"{emoji('zSafe')} » Security\n"
+    f"{emoji('zbot')} » Automoderation\n"
+    f"{emoji('zwrench')} » Utility\n"
+    f"{emoji('zwifi')} » Autoreact & responder\n"
+    f"{emoji('zsowrd')} » Moderation\n"
+    f"{emoji('zpeople')} » Autorole & Invc\n"
+    f"{emoji('zrocket')} » Fun\n"
+    f"{emoji('games')} » Games\n"
+    f"{emoji('zban')} » Ignore Channels\n"
+    f"{emoji('zwifi')} » Server\n"
+    f"{emoji('zunmute')} » Voice\n"
+    f"{emoji('zseed')} » Welcomer\n"
+    f"{emoji('ztada')} » Giveaway\n"
+    f"{emoji('zticket')} » Ticket\n"
+    f"{emoji('zpeople')} » Invite Tracker\n"
+    f"{emoji('zwrench')} » Bot Customization {emoji('starr')}\n\n"
+    f"{emoji('zmodule')} **Extra Features**\n"
+    f"{emoji('zcast')} » Advance Logging\n"
+    f"{emoji('starr')} » Vanityroles\n"
+    f"{emoji('zcounting')} » Counting\n"
+    f"{emoji('zyrox_system')} » J2C\n"
+    f"{emoji('boost')} » Boost\n"
+    f"{emoji('zlevelup')} » Leveling\n"
+    f"{emoji('zpin')} » Sticky\n"
+    f"{emoji('zyroxthunder')} » Verification\n"
+    f"{emoji('lock')} » Encryption\n"
+    f"{emoji('zmc')} » Minecraft\n"
+    f"{emoji('zmsg')} » Joindm\n"
+    f"{emoji('zcircle')} » Birthday\n"
+    f"{emoji('zcircle2')} » Customrole\n\n"
+    f"• Help page 1/29 | Requested by: {author_name}"
+  )
+
+
+class HelpFeatureView(discord.ui.View):
+  def __init__(self, ctx):
+    super().__init__(timeout=300)
+    self.ctx = ctx
+
+  async def interaction_check(self, interaction: discord.Interaction) -> bool:
+    if interaction.user.id != self.ctx.author.id:
+      await interaction.response.send_message(
+        "You must run this command to interact with it.", ephemeral=True
+      )
+      return False
+    return True
+
+  @discord.ui.button(label="Main Commands", style=discord.ButtonStyle.primary, custom_id="help_main")
+  async def main_commands(self, interaction: discord.Interaction, button: discord.ui.Button):
+    await interaction.response.send_message(
+      "**Main Features**\nSecurity\nAutomoderation\nUtility\nAutoreact & responder\n"
+      "Moderation\nAutorole & Invc\nFun\nGames\nIgnore Channels\nServer\nVoice\n"
+      "Welcomer\nGiveaway\nTicket\nInvite Tracker\nBot Customization",
+      ephemeral=True,
+    )
+
+  @discord.ui.button(label="Extra Commands", style=discord.ButtonStyle.secondary, custom_id="help_extra")
+  async def extra_commands(self, interaction: discord.Interaction, button: discord.ui.Button):
+    await interaction.response.send_message(
+      "**Extra Features**\nAdvance Logging\nVanityroles\nCounting\nJ2C\nBoost\n"
+      "Leveling\nSticky\nVerification\nEncryption\nMinecraft\nJoindm\nBirthday\nCustomrole",
+      ephemeral=True,
+    )
+
+
 class HelpCommand(commands.HelpCommand):
 
   async def send_ignore_message(self, ctx, ignore_type: str):
@@ -89,94 +166,12 @@ class HelpCommand(commands.HelpCommand):
     if not check_ignore:
       await self.send_ignore_message(ctx, "command")
       return
-
-    branding = await get_branding(ctx.guild.id)
-    b_name  = branding["branding_name"]
-    b_color = branding["embed_color"]
-
-    # Show loading embed
-    loading_embed = discord.Embed(
-      description=f"{_e('loadingred')} Loading help Menu...",
-      color=b_color
+    prefix = (await getConfig(ctx.guild.id)).get("prefix", ">")
+    await ctx.reply(
+      _help_text(ctx.author.name, prefix=prefix),
+      view=HelpFeatureView(ctx),
+      mention_author=False,
     )
-    loading_msg = await ctx.reply(embed=loading_embed)
-
-    # Wait 2 seconds
-    await asyncio.sleep(2)
-
-    # Delete loading message
-    with suppress(discord.NotFound):
-      await loading_msg.delete()
-
-    data = await getConfig(self.context.guild.id)
-    prefix = data["prefix"]
-    filtered = await self.filter_commands(self.context.bot.walk_commands(), sort=True)
-
-    embed = discord.Embed(
-        description=(
-         f"**{_e('ArrowRed')} __Start {b_name} Today__**\n"
-         f"**{_e('zArrow')} Type {prefix}antinuke enable**\n"
-         f"**{_e('zArrow')} Server Prefix:** `{prefix}`\n"
-         f"**{_e('zArrow')} Total Commands:** `{len(set(self.context.bot.walk_commands()))}`\n"),
-        color=b_color)
-    embed.set_author(name=f"{ctx.author}",
-                     icon_url=ctx.author.display_avatar.url)
-    if branding.get("embed_thumbnail"):
-        embed.set_thumbnail(url=branding["embed_thumbnail"])
-    else:
-        embed.set_thumbnail(url=ctx.author.display_avatar.url)
-    if branding.get("embed_banner"):
-        embed.set_image(url=branding["embed_banner"])
-
-    embed.add_field(
-        name=f"{_e('zCloud')} __**Main Features**__",
-        value=(
-            f">>> \n {_e('zSafe')} `»` Security\n"
-            f" {_e('zbot')} `»` Automoderation\n"
-            f" {_e('zwrench')} `»` Utility\n"
-            f" {_e('zwifi')} `»` Autoreact & responder\n"
-            f" {_e('zsowrd')} `»` Moderation\n"
-            f" {_e('zpeople')} `»` Autorole & Invc\n"
-            f" {_e('zrocket')} `»` Fun\n"
-            f" {_e('games')} `»` Games\n"
-            f" {_e('zban')} `»` Ignore Channels\n"
-            f" {_e('zwifi')} `»` Server\n"
-            f" {_e('zunmute')} `»` Voice\n"
-            f" {_e('zseed')} `»` Welcomer\n"
-            f" {_e('ztada')} `»` Giveaway\n"
-            f" {_e('zticket')} `»` Ticket\n"
-            f" {_e('zpeople')} `»` Invite Tracker\n"
-             f" {_e('zlevelup')} `»` Leveling\n"
-             f" {_e('zcast')} `»` Advance Logging\n"
-            f" {_e('zwrench')} `»` Bot Customization {_e('starr')}\n"
-        )
-    )
-
-    embed.add_field(
-        name=f" {_e('zmodule')} __**Extra Features**__",
-        value=(
-            f">>> \n {_e('zcast')} `»` Advance Logging\n"
-            f" {_e('starr')} `»` Vanityroles\n"
-            f" {_e('zcounting')} `»` Counting\n"
-            f" {_e('zyrox_system')} `»` J2C\n"
-            f" {_e('boost')} `»` Boost\n"
-             f" {_e('zpoll')} `»` Polls\n"
-            f" {_e('zpin')} `»` Sticky\n"
-            f" {_e('zyroxthunder')} `»` Verification\n"
-            f" {_e('lock')} `»` Encryption\n"
-            f" {_e('zmc')} `»` Minecraft\n"
-            f" {_e('zmsg')} `»` Joindm\n"
-            f" {_e('zcircle')} `»` Birthday\n"
-            f" {_e('zcircle2')} `»` Customrole\n"
-        )
-    )
-
-    embed.set_footer(
-      text=f"Requested By {self.context.author} | {b_name}",
-    )
-    
-    view = vhelp.View(mapping=mapping, ctx=self.context, homeembed=embed, ui=2, branding=branding)
-    await ctx.reply(embed=embed, view=view)
 
   async def send_command_help(self, command):
     ctx = self.context
@@ -333,87 +328,9 @@ class Help(Cog, name="help"):
         )
 
   async def _build_and_send_help(self, interaction: Interaction):
-    bot = interaction.client
-    mapping = {cog: cog.get_commands() for cog in bot.cogs.values()}
-
-    data = await getConfig(interaction.guild.id)
-    prefix = data["prefix"]
+    prefix = (await getConfig(interaction.guild.id)).get("prefix", ">")
     ctx = _SlashCtx(interaction, prefix=prefix)
-    branding = await get_branding(interaction.guild.id)
-    b_name  = branding["branding_name"]
-    b_color = branding["embed_color"]
-
-    embed = discord.Embed(
-        description=(
-            f"**{_e('ArrowRed')} __Start {b_name} Today__**\n"
-            f"**{_e('zArrow')} Type {prefix}antinuke enable**\n"
-            f"**{_e('zArrow')} Server Prefix:** `{prefix}`\n"
-            f"**{_e('zArrow')} Total Commands:** `{len(set(bot.walk_commands()))}`\n"
-        ),
-        color=b_color
+    await interaction.followup.send(
+      _help_text(interaction.user.name, prefix=prefix),
+      view=HelpFeatureView(ctx),
     )
-    embed.set_author(name=f"{interaction.user}", icon_url=interaction.user.display_avatar.url)
-    if branding.get("embed_thumbnail"):
-        embed.set_thumbnail(url=branding["embed_thumbnail"])
-    else:
-        embed.set_thumbnail(url=interaction.user.display_avatar.url)
-    if branding.get("embed_banner"):
-        embed.set_image(url=branding["embed_banner"])
-
-    embed.add_field(
-        name=f"{_e('zCloud')} __**Main Features**__",
-        value=(
-            f">>> \n {_e('zSafe')} `»` Security\n"
-            f" {_e('zbot')} `»` Automoderation\n"
-            f" {_e('zwrench')} `»` Utility\n"
-            f" {_e('zwifi')} `»` Autoreact & responder\n"
-            f" {_e('zsowrd')} `»` Moderation\n"
-            f" {_e('zpeople')} `»` Autorole & Invc\n"
-            f" {_e('zrocket')} `»` Fun\n"
-            f" {_e('games')} `»` Games\n"
-            f" {_e('zban')} `»` Ignore Channels\n"
-            f" {_e('zwifi')} `»` Server\n"
-            f" {_e('zunmute')} `»` Voice\n"
-            f" {_e('zseed')} `»` Welcomer\n"
-            f" {_e('ztada')} `»` Giveaway\n"
-            f" {_e('zticket')} `»` Ticket\n"
-            f" {_e('zpeople')} `»` Invite Tracker\n"
-             f" {_e('zlevelup')} `»` Leveling\n"
-             f" {_e('zcast')} `»` Advance Logging\n"
-            f" {_e('zwrench')} `»` Bot Customization {_e('starr')}\n"
-        ),
-    )
-
-    embed.add_field(
-        name=f" {_e('zmodule')} __**Extra Features**__",
-        value=(
-            f">>> \n {_e('zcast')} `»` Advance Logging\n"
-            f" {_e('starr')} `»` Vanityroles\n"
-            f" {_e('zcounting')} `»` Counting\n"
-            f" {_e('zyrox_system')} `»` J2C\n"
-            f" {_e('boost')} `»` Boost\n"
-             f" {_e('zpoll')} `»` Polls\n"
-            f" {_e('zpin')} `»` Sticky\n"
-            f" {_e('zyroxthunder')} `»` Verification\n"
-            f" {_e('lock')} `»` Encryption\n"
-            f" {_e('zmc')} `»` Minecraft\n"
-            f" {_e('zmsg')} `»` Joindm\n"
-            f" {_e('zcircle')} `»` Birthday\n"
-            f" {_e('zcircle2')} `»` Customrole\n"
-        ),
-    )
-
-    embed.set_footer(text=f"Requested By {interaction.user} | {b_name}")
-
-    try:
-      view = vhelp.View(mapping=mapping, ctx=ctx, homeembed=embed, ui=2, branding=branding)
-    except Exception:
-      logger.exception("Unable to build slash help view")
-      await interaction.followup.send(embed=embed)
-      return
-
-    try:
-      await interaction.followup.send(embed=embed, view=view)
-    except discord.HTTPException:
-      logger.exception("Unable to send slash help view; retrying without components")
-      await interaction.followup.send(embed=embed)

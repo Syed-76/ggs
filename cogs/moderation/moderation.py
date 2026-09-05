@@ -512,15 +512,31 @@ class Moderation(commands.Cog):
   @commands.command(
         name="prefix",
         aliases=["setprefix", "prefixset"],
-        help="Shows the bot prefix (locked to >)"
+        help="Shows or changes the bot prefix"
     )
   @blacklist_check()
   @ignore_check()
   @commands.guild_only()
-  async def _prefix(self, ctx: commands.Context):
+  @commands.has_permissions(manage_guild=True)
+  async def _prefix(self, ctx: commands.Context, new_prefix: str = None):
+      if new_prefix is not None:
+          if len(new_prefix) > 5 or any(char.isspace() for char in new_prefix):
+              return await ctx.reply(
+                  "Prefix must be 1-5 characters and cannot contain spaces.",
+                  mention_author=False,
+              )
+          await updateConfig(ctx.guild.id, {"prefix": new_prefix})
+          return await ctx.reply(
+              f"Prefix updated to `{new_prefix}`. Use `{new_prefix}help` from now on.",
+              mention_author=False,
+          )
+
+      current_prefix = (await getConfig(ctx.guild.id)).get("prefix", ">")
       embed = discord.Embed(
           title="ℹ️ Bot Prefix",
-          description=f"The bot prefix is locked to **`>`** and cannot be changed.\n\nFun commands use **`sun`** (e.g. `sun hug @user`).",
+          description=f"The current bot prefix is **`{current_prefix}`**.\n\n"
+                      f"To change it, use `{current_prefix}prefix <new-prefix>`.\n"
+                      "Fun commands use **`sun`** (e.g. `sun hug @user`).",
           color=self.color,
       )
       await ctx.reply(embed=embed, mention_author=False)

@@ -147,8 +147,10 @@ class zyrox(commands.AutoShardedBot):
             return msg
 
     async def get_prefix(self, message: discord.Message):
-        # Prefix is locked to ">" — cannot be changed per-guild
+        # Resolve the configured prefix for this guild on every message.
         prefix = ">"
+        if message.guild is not None:
+            prefix = (await getConfig(message.guild.id)).get("prefix", ">") or ">"
         async with aiosqlite.connect('db/np.db') as db:
             async with db.execute("SELECT id FROM np WHERE id = ?", (message.author.id,)) as cursor:
                 row = await cursor.fetchone()

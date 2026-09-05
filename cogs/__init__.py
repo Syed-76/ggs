@@ -1,5 +1,6 @@
 from __future__ import annotations
 from core import zyrox
+from core.feature_store import FeatureStore
 from colorama import Fore, Style, init
 
 
@@ -183,6 +184,9 @@ from .moderation.snipe import Snipe
 
 
 async def setup(bot: zyrox):
+  bot.feature_store = FeatureStore()
+  await bot.feature_store.initialize()
+
   cogs_to_load = [
         Help, General, Moderation, Automod, Welcomer, Fun, Games, Extra,
         Voice, Owner, Customrole, afk, Embed, Media, Ignore, TicketCog, Logging,
