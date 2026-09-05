@@ -285,11 +285,12 @@ class HelpCommand(commands.HelpCommand):
 
 
 class _SlashCtx:
-    """Minimal context-like wrapper so the help View works from a slash command."""
-    def __init__(self, interaction: Interaction):
-        self.author = interaction.user
-        self.bot = interaction.client
-        self.guild = interaction.guild
+  """Minimal context-like wrapper so the help View works from a slash command."""
+  def __init__(self, interaction: Interaction, prefix: str = ">"):
+    self.author = interaction.user
+    self.bot = interaction.client
+    self.guild = interaction.guild
+    self.prefix = prefix
 
 
 class Help(Cog, name="help"):
@@ -332,12 +333,12 @@ class Help(Cog, name="help"):
         )
 
   async def _build_and_send_help(self, interaction: Interaction):
-    ctx = _SlashCtx(interaction)
     bot = interaction.client
     mapping = {cog: cog.get_commands() for cog in bot.cogs.values()}
 
     data = await getConfig(interaction.guild.id)
     prefix = data["prefix"]
+    ctx = _SlashCtx(interaction, prefix=prefix)
     branding = await get_branding(interaction.guild.id)
     b_name  = branding["branding_name"]
     b_color = branding["embed_color"]

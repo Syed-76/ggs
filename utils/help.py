@@ -403,7 +403,10 @@ class View(discord.ui.View):
             if cog.__class__.__name__ in self._MERGE_INTO:
                 continue
             if "help_custom" in dir(cog):
-                _, label, _ = cog.help_custom()
+                metadata = self._get_help_custom(cog)
+                if metadata is None:
+                    continue
+                _, label, _ = metadata
                 original_label = label
                 counter = 1
                 while label in used_labels:
@@ -417,6 +420,19 @@ class View(discord.ui.View):
 
     def get_cogs(self):
         return list(self.mapping.keys())
+
+    def _get_help_custom(self, cog):
+        """Return valid category metadata without letting one cog break help."""
+        try:
+            emoji, label, description = cog.help_custom()
+            return (
+                str(emoji or "").strip(),
+                str(label or cog.__class__.__name__),
+                str(description or "No commands"),
+            )
+        except Exception:
+            logger.exception("Unable to load help metadata for %s", cog.__class__.__name__)
+            return None
 
     # ── Command-runner helpers ─────────────────────────────────────────────────
 
@@ -562,8 +578,10 @@ class View(discord.ui.View):
             if cog.__class__.__name__ in _cogs_to_merge:
                 continue
 
-            emoji_str, label, description = cog.help_custom()
-            emoji_str = emoji_str.strip()  # remove accidental trailing spaces
+            metadata = self._get_help_custom(cog)
+            if metadata is None:
+                continue
+            emoji_str, label, description = metadata
             original_label = label
 
             counter = 1
