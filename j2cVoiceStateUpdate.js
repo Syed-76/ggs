@@ -39,10 +39,9 @@ module.exports = function registerJ2C(client, options = {}) {
       try {
         const triggerChannel = newState.channel;
         const parentId = configuredCategoryId || triggerChannel?.parentId;
-        const safeName = member.displayName.slice(0, 80).trim() || "User";
 
         temporaryChannel = await guild.channels.create({
-          name: `🔊 ${safeName}'s Lounge`.slice(0, 100),
+          name: `🔊 ${newState.member.displayName}'s Lounge`,
           type: ChannelType.GuildVoice,
           parent: parentId || undefined,
           reason: `J2C channel created for ${member.user.tag}`,
