@@ -13,10 +13,9 @@ from utils import help as vhelp
 from utils import Paginator, DescriptionEmbedPaginator, FieldPagePaginator, TextPaginator
 import asyncio
 import logging
-from utils.config import serverLink
+from utils.config import DASHBOARD_URL, serverLink
 from utils.Tools import *
 from utils.branding import get_branding, DEFAULT_COLOR, DEFAULT_BRANDING
-from utils.emojis import e as _e
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +25,12 @@ client = zyrox()
 
 def _help_embed(ctx, prefix: str = ">", total_commands: int = 589) -> discord.Embed:
   """Build the visual home page shared by prefix and slash help."""
-  emoji = lambda name: _e(name) or f":{name}:"
   embed = discord.Embed(
     color=0x4A2E80,
     description=(
-      f"{emoji('ArrowRed')} **Get started**\n"
-      f"{emoji('zArrow')} Try `{prefix}antinuke enable` to enable server protection.\n"
-      f"{emoji('zArrow')} Prefix: `{prefix}` • Commands: `{total_commands}`"
+      f"**Get started**\n"
+      f"Try `{prefix}antinuke enable` to enable server protection.\n"
+      f"Prefix: `{prefix}` • Commands: `{total_commands}`"
     ),
   )
   embed.set_author(
@@ -40,43 +38,43 @@ def _help_embed(ctx, prefix: str = ">", total_commands: int = 589) -> discord.Em
     icon_url=ctx.bot.user.display_avatar.url,
   )
   embed.add_field(
-    name="☁️ Main Features",
+    name="Main Features",
     value="\n".join([
-      f"{emoji('zSafe')} » Security",
-      f"{emoji('zbot')} » Automoderation",
-      f"{emoji('zwrench')} » Utility",
-      f"{emoji('zwifi')} » Autoreact & Responder",
-      f"{emoji('zsowrd')} » Moderation",
-      f"{emoji('zpeople')} » Autoroles & Invite-to-Voice",
-      f"{emoji('zrocket')} » Fun",
-      f"{emoji('games')} » Games",
-      f"{emoji('zban')} » Ignored Channels",
-      f"{emoji('zwifi')} » Server Management",
-      f"{emoji('zunmute')} » Voice",
-      f"{emoji('zseed')} » Welcomer",
-      f"{emoji('ztada')} » Giveaways",
-      f"{emoji('zticket')} » Tickets",
-      f"{emoji('zpeople')} » Invite Tracking",
-      f"{emoji('zwrench')} » Bot Customization {emoji('starr')}",
+      "Security",
+      "Automoderation",
+      "Utility",
+      "Autoreact & Responder",
+      "Moderation",
+      "Autoroles & Invite-to-Voice",
+      "Fun",
+      "Games",
+      "Ignored Channels",
+      "Server Management",
+      "Voice",
+      "Welcomer",
+      "Giveaways",
+      "Tickets",
+      "Invite Tracking",
+      "Bot Customization",
     ]),
     inline=True,
   )
   embed.add_field(
-    name="🔮 Extra Features",
+    name="Extra Features",
     value="\n".join([
-      f"{emoji('zcast')} » Advanced Logging",
-      f"{emoji('starr')} » Vanity Roles",
-      f"{emoji('zcounting')} » Counting",
-      f"{emoji('zyrox_system')} » J2C",
-      f"{emoji('boost')} » Boosting",
-      f"{emoji('zlevelup')} » Leveling",
-      f"{emoji('zpin')} » Sticky Messages",
-      f"{emoji('zyroxthunder')} » Verification",
-      "🔒 » Encryption",
-      f"{emoji('zmc')} » Minecraft",
-      f"{emoji('zmsg')} » Join DMs",
-      f"{emoji('zcircle')} » Birthdays",
-      f"{emoji('zcircle2')} » Custom Roles",
+      "Advanced Logging",
+      "Vanity Roles",
+      "Counting",
+      "J2C",
+      "Boosting",
+      "Leveling",
+      "Sticky Messages",
+      "Verification",
+      "Encryption",
+      "Minecraft",
+      "Join DMs",
+      "Birthdays",
+      "Custom Roles",
     ]),
     inline=True,
   )
@@ -92,7 +90,7 @@ def _category_pages(ctx, mapping):
     if not hasattr(cog, "help_custom"):
       continue
     try:
-      emoji, label, description = cog.help_custom()
+      _, label, description = cog.help_custom()
     except Exception:
       continue
     lines = []
@@ -101,7 +99,7 @@ def _category_pages(ctx, mapping):
         continue
       lines.append(f"`{ctx.prefix}{command.qualified_name}` — {command.short_doc or 'No description'}")
     if lines:
-      pages.append((str(emoji or ""), str(label), str(description or "No commands"), lines))
+      pages.append(("", str(label), str(description or "No commands"), lines))
   return pages[:25]
 
 
@@ -116,9 +114,8 @@ class HelpFeatureView(discord.ui.View):
         label=label[:100],
         value=str(index),
         description=description[:100],
-        emoji=emoji or None,
       )
-      for index, (emoji, label, description, _) in enumerate(self.pages)
+      for index, (_, label, description, _) in enumerate(self.pages)
     ]
     if not options:
       options = [discord.SelectOption(label="No categories available", value="none")]
@@ -147,6 +144,12 @@ class HelpFeatureView(discord.ui.View):
     self.extra_button.callback = self.extra_commands
     self.add_item(self.extra_button)
 
+    self.dashboard_button = discord.ui.Button(
+      label="Dashboard", style=discord.ButtonStyle.link,
+      url=DASHBOARD_URL, row=1,
+    )
+    self.add_item(self.dashboard_button)
+
   async def interaction_check(self, interaction: discord.Interaction) -> bool:
     if interaction.user.id != self.ctx.author.id:
       await interaction.response.send_message(
@@ -156,9 +159,9 @@ class HelpFeatureView(discord.ui.View):
     return True
 
   async def category_callback(self, interaction: discord.Interaction):
-    emoji, label, description, lines = self.pages[int(self.category_select.values[0])]
+    _, label, description, lines = self.pages[int(self.category_select.values[0])]
     embed = discord.Embed(
-      title=f"{emoji} {label}".strip(),
+      title=label,
       description=description,
       color=0x4A2E80,
     )
@@ -396,17 +399,15 @@ class Help(Cog, name="help"):
       await asyncio.wait_for(self._build_and_send_help(interaction), timeout=10)
     except asyncio.TimeoutError:
       with suppress(discord.HTTPException):
-        from utils.emojis import e as _e
         await interaction.followup.send(
-          f"{_e('zcross')} The help menu took too long to load. Please try again.",
+          "The help menu took too long to load. Please try again.",
           ephemeral=True,
         )
     except Exception as e:
       logger.exception("slash_help failed")
       with suppress(discord.HTTPException):
-        from utils.emojis import e as _e
         await interaction.followup.send(
-          f"{_e('zcross')} Something went wrong while loading the help menu. Please try again.",
+          "Something went wrong while loading the help menu. Please try again.",
           ephemeral=True,
         )
 
