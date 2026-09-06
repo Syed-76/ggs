@@ -1,0 +1,18 @@
+{
+  "name": "zyrox-platform",
+  "private": true,
+  "workspaces": ["backend/api", "bot", "frontend"],
+  "scripts": {
+    "dev": "concurrently \"npm:dev:api\" \"npm:dev:bot\" \"npm:dev:web\"",
+    "dev:api": "npm --workspace backend/api run dev",
+    "dev:bot": "npm --workspace bot run dev",
+    "dev:web": "npm --workspace frontend run dev",
+    "build": "npm run build:api && npm run build:bot && npm run build:web",
+    "build:api": "npm --workspace backend/api run build",
+    "build:bot": "npm --workspace bot run build",
+    "build:web": "npm --workspace frontend run build",
+    "db:generate": "npm --workspace backend/api run prisma:generate",
+    "db:push": "npm --workspace backend/api run prisma:push"
+  },
+  "devDependencies": { "concurrently": "^9.1.2" }
+}

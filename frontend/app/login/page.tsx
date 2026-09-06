@@ -1,0 +1,3 @@
+import Link from "next/link";
+const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+export default function Login() { return <main className="shell flex min-h-screen items-center justify-center px-6"><section className="glass w-full max-w-md rounded-2xl p-8"><Link href="/" className="text-sm text-slate-500">Zyrox Control Room</Link><h1 className="mt-10 text-4xl">Sign in</h1><p className="mt-3 leading-7 text-slate-400">Connect your Discord identity to manage only the communities where you have permission.</p><a href={`${api}/api/auth/login`} className="mt-8 flex items-center justify-center rounded-xl bg-[#5865f2] px-5 py-3 font-bold text-white transition hover:brightness-110">Continue with Discord</a></section></main>; }

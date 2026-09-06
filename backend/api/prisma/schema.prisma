@@ -1,0 +1,30 @@
+generator client { provider = "prisma-client-js" }
+
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+model ServerSettings {
+  guildId         String   @id
+  autoMod         Boolean  @default(true)
+  antiLink        Boolean  @default(false)
+  antiSpam        Boolean  @default(true)
+  blacklistedWords String[] @default([])
+  welcomeEnabled  Boolean  @default(false)
+  welcomeMessage  String   @default("Welcome to {server}, {user}!")
+  leaveMessage    String   @default("{user} has left the server.")
+  welcomeChannelId String?
+  aiEnabled       Boolean  @default(false)
+  aiChannelId     String?
+  economyEnabled  Boolean  @default(true)
+  levelingEnabled Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+}
+
+model DashboardAudit {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  action    String
+  payload   Json
+  createdAt DateTime @default(now())
+  @@index([guildId, createdAt])
+}
