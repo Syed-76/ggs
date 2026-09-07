@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Partials, Events, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, TextChannel, type ChatInputCommandInteraction } from "discord.js";
+import { Client, GatewayIntentBits, Partials, Events, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, TextChannel, type ChatInputCommandInteraction, type Message } from "discord.js";
 import { env } from "./config.js";
 import { SettingsCache } from "./settings.js";
 
@@ -7,13 +7,92 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 const settings = new SettingsCache(() => client.guilds.cache.map(guild => guild.id));
-const spam = new Map<string, { count: number; resetAt: number }>();
+const repeatedMessages = new Map<string, { content: string; count: number; firstAt: number }>();
+const spamWindowMs = 10_000;
+const spamThreshold = 6;
 const botCreationDate = process.env.BOT_CREATION_DATE ?? "September 7, 2026";
 const commands = [
   new SlashCommandBuilder().setName("ping").setDescription("Check bot health"),
   new SlashCommandBuilder().setName("voteinfo").setDescription("Learn about the bot and its features"),
   new SlashCommandBuilder().setName("help").setDescription("Browse available commands and dashboard features")
 ].map(command => command.toJSON());
+
+const configuredGifChannelIds = new Set((env.GIF_ONLY_CHANNEL_IDS ?? "").split(",").map(value => value.trim()).filter(Boolean));
+
+function isGifOnlyChannel(message: Message): boolean {
+  return configuredGifChannelIds.has(message.channel.id) || ("name" in message.channel && message.channel.name === env.GIF_ONLY_CHANNEL_NAME);
+}
+
+function isGifUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    return url.pathname.toLowerCase().endsWith(".gif") || host.includes("tenor.com") || host.includes("giphy.com");
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedGifMessage(message: Message): boolean {
+  const attachments = [...message.attachments.values()];
+  if (attachments.length > 0) return attachments.every(attachment => attachment.contentType === "image/gif" || isGifUrl(attachment.url) || Boolean(attachment.name?.toLowerCase().endsWith(".gif"))) && message.content.trim() === "";
+  const content = message.content.trim();
+  if (!content) return false;
+  const parts = content.split(/\s+/);
+  return parts.length > 0 && parts.every(isGifUrl);
+}
+
+async function warnAndDelete(message: Message, content: string): Promise<void> {
+  if (!message.channel.isTextBased() || !("send" in message.channel)) return;
+  const warning = await message.channel.send({ content }).catch(() => null);
+  if (warning) setTimeout(() => { void warning.delete().catch(() => undefined); }, 3_000);
+}
+
+async function enforceGifOnlyChannel(message: Message): Promise<boolean> {
+  if (!isGifOnlyChannel(message) || isAllowedGifMessage(message)) return false;
+  if (!message.guild || !message.channel.isTextBased() || !("send" in message.channel)) return true;
+  const permissions = message.guild.members.me?.permissionsIn(message.channel.id);
+  if (permissions?.has(PermissionFlagsBits.ManageMessages)) {
+    await message.delete().catch(() => undefined);
+    await warnAndDelete(message, `${message.author}, only GIFs are allowed in this channel.`);
+  } else {
+    console.warn(`GIF-only enforcement skipped in ${message.guild?.id}/${message.channel.id}: missing Manage Messages permission`);
+  }
+  return true;
+}
+
+async function enforceRepeatedMessageTimeout(message: Message): Promise<void> {
+  if (!message.guild || !message.member || !message.content.trim() || !message.channel.isTextBased() || !("send" in message.channel)) return;
+  const key = `${message.guild.id}:${message.author.id}`;
+  const now = Date.now();
+  const previous = repeatedMessages.get(key);
+  const entry = previous && previous.firstAt + spamWindowMs > now && previous.content === message.content
+    ? { content: previous.content, count: previous.count + 1, firstAt: previous.firstAt }
+    : { content: message.content, count: 1, firstAt: now };
+  repeatedMessages.set(key, entry);
+  if (entry.count < spamThreshold) return;
+  repeatedMessages.delete(key);
+  const permissions = message.guild.members.me?.permissionsIn(message.channel.id);
+  if (!permissions?.has(PermissionFlagsBits.ModerateMembers)) {
+    console.warn(`Spam timeout skipped in ${message.guild.id}: missing Moderate Members permission`);
+    return;
+  }
+  const timedOut = await message.member.timeout(10 * 60 * 1_000, "Repeated identical messages (6 in 10 seconds)").then(() => true).catch(error => {
+    console.error(`Failed to timeout ${message.author.tag} in ${message.guild?.id}`, error);
+    return false;
+  });
+  if (!timedOut) return;
+  console.info(`Timed out ${message.author.tag} (${message.author.id}) in ${message.guild.id} for repeated-message spam`);
+  await message.author.send(`You were timed out in **${message.guild.name}** for 10 minutes because you sent the same message 6 times within 10 seconds.`).catch(() => undefined);
+}
+
+const trackingCleanup = setInterval(() => {
+  const cutoff = Date.now() - spamWindowMs;
+  for (const [key, entry] of repeatedMessages) {
+    if (entry.firstAt < cutoff) repeatedMessages.delete(key);
+  }
+}, spamWindowMs);
+trackingCleanup.unref();
 
 function voteInfoEmbed(): EmbedBuilder {
   return new EmbedBuilder()
@@ -135,6 +214,7 @@ client.on(Events.GuildMemberRemove, async member => {
 });
 client.on(Events.MessageCreate, async message => {
   if (!message.guild || message.author.bot) return;
+  if (await enforceGifOnlyChannel(message)) return;
   const config = await settings.load(message.guild.id);
   const normalized = message.content.toLowerCase();
   if (config.autoMod && config.blacklistedWords.some(word => normalized.includes(word.toLowerCase()))) {
@@ -145,12 +225,8 @@ client.on(Events.MessageCreate, async message => {
   if (config.antiLink && /https?:\/\/|discord\.gg\//i.test(message.content) && !message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) {
     await message.delete().catch(() => undefined); return;
   }
-  if (config.antiSpam) {
-    const key = `${message.guild.id}:${message.author.id}`; const now = Date.now(); const entry = spam.get(key);
-    if (!entry || entry.resetAt < now) spam.set(key, { count: 1, resetAt: now + 7000 });
-    else { entry.count += 1; if (entry.count >= 6) { await message.member?.timeout(60_000, "Auto-Mod spam").catch(() => undefined); spam.delete(key); } }
-  }
+  if (config.antiSpam) await enforceRepeatedMessageTimeout(message);
 });
 client.on(Events.Error, error => console.error("Discord client error", error));
-process.once("SIGTERM", () => { settings.close(); client.destroy(); });
+process.once("SIGTERM", () => { clearInterval(trackingCleanup); settings.close(); client.destroy(); });
 client.login(env.DISCORD_BOT_TOKEN);
