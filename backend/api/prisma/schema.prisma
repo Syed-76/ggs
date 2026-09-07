@@ -1,6 +1,31 @@
-generator client { provider = "prisma-client-js" }
+generator client {
+  provider = "prisma-client-js"
+}
 
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id
+  username  String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  oauth     OAuthAccount?
+  audits    DashboardAudit[]
+}
+
+model OAuthAccount {
+  userId             String   @id
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessTokenCipher  String
+  refreshTokenCipher String
+  expiresAt          DateTime
+  scope              String
+  updatedAt          DateTime @updatedAt
+}
 
 model ServerSettings {
   guildId         String   @id
@@ -16,6 +41,10 @@ model ServerSettings {
   aiChannelId     String?
   economyEnabled  Boolean  @default(true)
   levelingEnabled Boolean  @default(true)
+  statusRoleEnabled Boolean @default(false)
+  targetStatus    String?
+  statusRoleId    String?
+  selfRoles       Json     @default("[]")
   updatedAt       DateTime @updatedAt
 }
 
@@ -23,6 +52,7 @@ model DashboardAudit {
   id        String   @id @default(cuid())
   guildId   String
   userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   action    String
   payload   Json
   createdAt DateTime @default(now())

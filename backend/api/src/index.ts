@@ -5,14 +5,16 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
+import { Redis } from "ioredis";
 import { env } from "./config.js";
 import { prisma } from "./db.js";
-import { botAuthHeaders, canManageGuild, createSession, discordFetch, requireSession, sessionCookie } from "./auth.js";
+import { botAuthHeaders, canManageGuild, createSession, discordFetch, encryptToken, readSession, requireSession, sessionCookie, userAccessToken } from "./auth.js";
 import { settingsSchema } from "./validation.js";
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: env.FRONTEND_ORIGIN, credentials: true } });
+const redis = env.REDIS_URL ? new Redis(env.REDIS_URL) : null;
 app.set("trust proxy", 1);
 app.use(cors({ origin: env.FRONTEND_ORIGIN, credentials: true }));
 app.use(express.json({ limit: "32kb" }));
@@ -47,11 +49,12 @@ app.get("/api/auth/callback", async (req, res) => {
   try {
     const tokenResponse = await fetch("https://discord.com/api/v10/oauth2/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: env.DISCORD_CLIENT_ID, client_secret: env.DISCORD_CLIENT_SECRET, grant_type: "authorization_code", code, redirect_uri: env.DISCORD_REDIRECT_URI }) });
     if (!tokenResponse.ok) throw new Error("OAuth token exchange failed");
-    const token = await tokenResponse.json() as { access_token: string };
+    const token = await tokenResponse.json() as { access_token: string; refresh_token: string; expires_in: number; scope: string };
     const user = await discordFetch("/users/@me", { headers: { Authorization: `Bearer ${token.access_token}` } });
+    await prisma.user.upsert({ where: { id: user.id }, create: { id: user.id, username: user.username, avatar: user.avatar ?? null }, update: { username: user.username, avatar: user.avatar ?? null } });
+    await prisma.oAuthAccount.upsert({ where: { userId: user.id }, create: { userId: user.id, accessTokenCipher: encryptToken(token.access_token), refreshTokenCipher: encryptToken(token.refresh_token), expiresAt: new Date(Date.now() + token.expires_in * 1000), scope: token.scope }, update: { accessTokenCipher: encryptToken(token.access_token), refreshTokenCipher: encryptToken(token.refresh_token), expiresAt: new Date(Date.now() + token.expires_in * 1000), scope: token.scope } });
     const session = createSession({ userId: user.id, username: user.username, avatar: user.avatar ?? null });
     res.cookie(sessionCookie, session, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
-    res.cookie("discord_access_token", token.access_token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.redirect(`${env.FRONTEND_ORIGIN}/guilds`);
   } catch { res.status(502).send("Discord authentication failed"); }
 });
@@ -60,55 +63,65 @@ app.get("/api/auth/me", requireSession, (req, res) => res.json({ user: res.local
 
 app.get("/api/guilds", requireSession, async (_req, res) => {
   try {
-    const userGuilds = await discordFetch("/users/@me/guilds", { headers: { Authorization: `Bearer ${String(_req.cookies?.discord_access_token ?? "")}` } });
+    const accessToken = await userAccessToken(res.locals.session.userId);
+    if (!accessToken) { res.status(401).json({ error: "discord_token_expired" }); return; }
+    const userGuilds = await discordFetch("/users/@me/guilds", { headers: { Authorization: `Bearer ${accessToken}` } });
     const botIds = await botGuildIds();
     res.json({ guilds: userGuilds.filter((guild: { permissions: string }) => canManageGuild(guild.permissions)).map((guild: { id: string; name: string; icon: string | null }) => ({ ...guild, botPresent: botIds.has(guild.id) })) });
   } catch { res.status(502).json({ error: "guild_fetch_failed" }); }
 });
 
 app.get("/api/guilds/:guildId/channels", requireSession, async (req, res) => {
-  if (!(await assertGuildAccess(req, req.params.guildId))) { res.status(403).json({ error: "guild_access_denied" }); return; }
+  const guildId = routeGuildId(req);
+  if (!(await assertGuildAccess(req, guildId))) { res.status(403).json({ error: "guild_access_denied" }); return; }
   try {
-    const channels = await discordFetch(`/guilds/${req.params.guildId}/channels`, { headers: botAuthHeaders() });
+    const channels = await discordFetch(`/guilds/${guildId}/channels`, { headers: botAuthHeaders() });
     res.json({ channels: channels.filter((channel: { type: number }) => channel.type === 0 || channel.type === 5).map((channel: { id: string; name: string; type: number }) => ({ id: channel.id, name: channel.name, type: channel.type })) });
   } catch { res.status(502).json({ error: "channel_fetch_failed" }); }
 });
 
 app.get("/api/guilds/:guildId/stats", requireSession, async (req, res) => {
-  if (!(await assertGuildAccess(req, req.params.guildId))) { res.status(403).json({ error: "guild_access_denied" }); return; }
+  const guildId = routeGuildId(req);
+  if (!(await assertGuildAccess(req, guildId))) { res.status(403).json({ error: "guild_access_denied" }); return; }
   try {
     const guild = await discordFetch(`/guilds/${req.params.guildId}?with_counts=true`, { headers: botAuthHeaders() });
-    res.json({ members: guild.approximate_member_count ?? 0, online: guild.approximate_presence_count ?? 0, botPresent: (await botGuildIds()).has(req.params.guildId) });
+    res.json({ members: guild.approximate_member_count ?? 0, online: guild.approximate_presence_count ?? 0, botPresent: (await botGuildIds()).has(guildId) });
   } catch { res.status(502).json({ error: "stats_fetch_failed" }); }
 });
 
 async function assertGuildAccess(req: express.Request, guildId: string) {
-  const session = resSession(req); if (!session) return false;
-  const accessToken = req.cookies?.discord_access_token;
+  if (!resSession(req)) return false;
+  const authSession = readSession(req);
+  const accessToken = authSession ? await userAccessToken(authSession.userId) : null;
   if (!accessToken) return false;
   const guilds = await discordFetch("/users/@me/guilds", { headers: { Authorization: `Bearer ${accessToken}` } });
   return guilds.some((guild: { id: string; permissions: string }) => guild.id === guildId && canManageGuild(guild.permissions));
 }
 function resSession(req: express.Request) { return req.cookies?.[sessionCookie] ? true : false; }
+function routeGuildId(req: express.Request): string { return String(req.params.guildId); }
 
 app.get("/api/settings/:guildId", requireSession, async (req, res) => {
-  if (!(await assertGuildAccess(req, req.params.guildId))) { res.status(403).json({ error: "guild_access_denied" }); return; }
-  const settings = await prisma.serverSettings.upsert({ where: { guildId: req.params.guildId }, create: { guildId: req.params.guildId }, update: {} });
+  const guildId = routeGuildId(req);
+  if (!(await assertGuildAccess(req, guildId))) { res.status(403).json({ error: "guild_access_denied" }); return; }
+  const settings = await prisma.serverSettings.upsert({ where: { guildId }, create: { guildId }, update: {} });
   res.json({ settings });
 });
 
 app.get("/internal/settings/:guildId", async (req, res) => {
   if (req.header("x-bot-secret") !== env.BOT_API_SECRET) { res.status(401).json({ error: "unauthorized" }); return; }
-  const settings = await prisma.serverSettings.upsert({ where: { guildId: req.params.guildId }, create: { guildId: req.params.guildId }, update: {} });
+  const guildId = routeGuildId(req);
+  const settings = await prisma.serverSettings.upsert({ where: { guildId }, create: { guildId }, update: {} });
   res.json({ settings });
 });
 app.patch("/api/settings/:guildId", requireSession, async (req, res) => {
-  if (!(await assertGuildAccess(req, req.params.guildId))) { res.status(403).json({ error: "guild_access_denied" }); return; }
+  const guildId = routeGuildId(req);
+  if (!(await assertGuildAccess(req, guildId))) { res.status(403).json({ error: "guild_access_denied" }); return; }
   const parsed = settingsSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "invalid_settings", details: parsed.error.flatten() }); return; }
-  const settings = await prisma.serverSettings.upsert({ where: { guildId: req.params.guildId }, create: { guildId: req.params.guildId, ...parsed.data }, update: parsed.data });
-  await prisma.dashboardAudit.create({ data: { guildId: req.params.guildId, userId: res.locals.session.userId, action: "settings.updated", payload: parsed.data } });
-  io.to(`guild:${req.params.guildId}`).emit("settings.updated", settings);
+  const settings = await prisma.serverSettings.upsert({ where: { guildId }, create: { guildId, ...parsed.data }, update: parsed.data });
+  await prisma.dashboardAudit.create({ data: { guildId, userId: res.locals.session.userId, action: "settings.updated", payload: parsed.data } });
+  io.to(`guild:${guildId}`).emit("settings.updated", settings);
+  await redis?.publish("zyrox:settings", JSON.stringify(settings));
   res.json({ settings });
 });
 
